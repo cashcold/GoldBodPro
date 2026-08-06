@@ -10,9 +10,11 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  
+  // 1. Bind dynamically to Heroku's PORT env variable
+  const PORT = process.env.PORT || 3000;
 
-  // Connect Database (or fallback to Memory Store)
+  // Connect Database
   await connectDB();
 
   // Middlewares
@@ -34,15 +36,24 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // 2. Serve Vite output assets in production
+    const clientDistPath = path.join(process.cwd(), 'dist', 'client');
+    const fallbackDistPath = path.join(process.cwd(), 'dist');
+
+    app.use(express.static(clientDistPath));
+    app.use(express.static(fallbackDistPath));
+
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+        if (err) {
+          res.sendFile(path.join(fallbackDistPath, 'index.html'));
+        }
+      });
     });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 GoldBod Pro Server running on http://0.0.0.0:${PORT}`);
+    console.log(`🚀 GoldBod Pro Server running on port ${PORT}`);
   });
 }
 
