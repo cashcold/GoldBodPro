@@ -692,6 +692,9 @@ router.get('/wallets', (req: Request, res: Response) => {
   return res.json(MEMORY_DB.wallets);
 });
 
+const hasApprovedFirstDeposit = (userId: string) =>
+  MEMORY_DB.deposits.some(d => d.userId === userId && d.status === 'approved');
+
 // Helper: Auto 10% Referral Bonus on First Deposit
 const triggerFirstDepositReferralReward = (deposit: any) => {
   const user = MEMORY_DB.users.find(u => u.id === deposit.userId);
@@ -813,6 +816,7 @@ router.get('/user/dashboard', authenticateToken, async (req: AuthRequest, res: R
 
   const userReferrals = MEMORY_DB.users
     .filter(u => u.referredBy === user.referralCode || u.referredBy === user.username || u.referredBy === user.id)
+    .filter(u => hasApprovedFirstDeposit(u.id))
     .map(u => {
       const firstDep = MEMORY_DB.deposits.find(d => d.userId === u.id && d.status === 'approved');
       const commission = firstDep ? Number(firstDep.amount) * 0.10 : 0;

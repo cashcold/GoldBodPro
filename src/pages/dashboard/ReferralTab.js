@@ -93,7 +93,7 @@ class ReferralTab extends Component {
           <h3 className="text-lg font-bold text-white mb-4">My Referral Team Members ({referrals?.length || 0})</h3>
 
           {referrals?.length === 0 ? (
-            <p className="text-xs text-gray-400 py-4">No referrals registered yet. Share your link above to build your team!</p>
+            <p className="text-xs text-gray-400 py-4">No active investor referrals yet. Once a referred user makes their first approved deposit, they count toward your team and milestone progress.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-gray-300">
