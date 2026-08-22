@@ -31,6 +31,7 @@ class OverviewTab extends Component {
     this.state = {
       amounts: {},
       submittingPlanId: null,
+      claimingId: null,
       investSuccessMsg: null,
       investErrMsg: null
     };
@@ -43,6 +44,25 @@ class OverviewTab extends Component {
         [planId]: value
       }
     }));
+  };
+
+  handleClaimPayout = async (invId) => {
+    const { refresh } = this.props;
+    this.setState({ claimingId: invId, investSuccessMsg: null, investErrMsg: null });
+
+    try {
+      const res = await api.post(`/user/claim-investment/${invId}`);
+      this.setState({
+        claimingId: null,
+        investSuccessMsg: res.data.message || 'Payout successfully credited to your available balance!'
+      });
+      if (refresh) refresh();
+    } catch (err) {
+      this.setState({
+        claimingId: null,
+        investErrMsg: err.response?.data?.error || 'Failed to claim payout.'
+      });
+    }
   };
 
   handleQuickInvest = async (plan) => {
@@ -84,7 +104,7 @@ class OverviewTab extends Component {
     const cards = [
       {
         title: 'Current Balance',
-        value: `$${user.balance?.toFixed(2)}`,
+        value: `$${(Number(user.balance || 0)).toFixed(2)}`,
         icon: Wallet,
         color: 'from-[#FFD700]/20 via-amber-500/10 to-amber-600/5',
         borderColor: 'border-[#FFD700]/40',
@@ -92,7 +112,7 @@ class OverviewTab extends Component {
       },
       {
         title: 'Active Investments',
-        value: `$${user.activeInvestment?.toFixed(2)}`,
+        value: `$${(Number(user.activeInvestment || 0)).toFixed(2)}`,
         icon: TrendingUp,
         color: 'from-emerald-500/20 to-emerald-600/10',
         borderColor: 'border-emerald-500/30',
@@ -100,7 +120,7 @@ class OverviewTab extends Component {
       },
       {
         title: "Today's Profit",
-        value: `+$${user.todaysProfit?.toFixed(2)}`,
+        value: `+$${(Number(user.todaysProfit || 0)).toFixed(2)}`,
         icon: DollarSign,
         color: 'from-cyan-500/20 to-cyan-600/10',
         borderColor: 'border-cyan-500/30',
@@ -108,7 +128,7 @@ class OverviewTab extends Component {
       },
       {
         title: 'Total Earnings',
-        value: `$${user.totalProfit?.toFixed(2)}`,
+        value: `$${(Number(user.totalProfit || 0)).toFixed(2)}`,
         icon: Sparkles,
         color: 'from-purple-500/20 to-purple-600/10',
         borderColor: 'border-purple-500/30',
@@ -116,7 +136,7 @@ class OverviewTab extends Component {
       },
       {
         title: 'Referral Income',
-        value: `$${user.referralIncome?.toFixed(2)}`,
+        value: `$${(Number(user.referralIncome || 0)).toFixed(2)}`,
         icon: Users,
         color: 'from-rose-500/20 to-rose-600/10',
         borderColor: 'border-rose-500/30',
@@ -124,7 +144,7 @@ class OverviewTab extends Component {
       },
       {
         title: 'Pending Withdrawals',
-        value: `$${user.pendingWithdrawals?.toFixed(2)}`,
+        value: `$${(Number(user.pendingWithdrawals || 0)).toFixed(2)}`,
         icon: Clock,
         color: 'from-slate-500/20 to-slate-600/10',
         borderColor: 'border-slate-500/30',
@@ -212,7 +232,7 @@ class OverviewTab extends Component {
             <div>
               <h3 className="text-lg font-black text-white flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#FFD700]" />
-                Active Investment Contracts ({activeInvestments.length})
+                Active Investment Contracts ({activeInvestments.filter(i => i.status === 'active').length})
               </h3>
               <p className="text-xs text-gray-400 mt-1">
                 Your running yield contracts automatically add interest profits daily.
@@ -226,9 +246,9 @@ class OverviewTab extends Component {
             </button>
           </div>
 
-          {activeInvestments.length > 0 ? (
+          {activeInvestments.filter(i => i.status === 'active').length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeInvestments.map((inv) => {
+              {activeInvestments.filter(i => i.status === 'active').map((inv) => {
                 const startMs = inv.startDate ? new Date(inv.startDate).getTime() : Date.now();
                 const endMs = inv.endDate
                   ? new Date(inv.endDate).getTime()
@@ -245,64 +265,91 @@ class OverviewTab extends Component {
                 const tomorrow = new Date(now);
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 const isTomorrow = endDate.toDateString() === tomorrow.toDateString();
+                const isMatured = Date.now() >= endMs;
 
                 let relativeDay = dateStr;
-                if (isToday) relativeDay = 'Today';
+                if (isMatured) relativeDay = 'Matured / Ready to Cashout';
+                else if (isToday) relativeDay = 'Today';
                 else if (isTomorrow) relativeDay = 'Tomorrow';
 
                 const fullMaturity = `${dateStr} at ${timeStr}`;
-                const relativeMaturity = `${relativeDay} by ${timeStr}`;
-                const isMatured = Date.now() >= endMs;
+                const relativeMaturity = isMatured ? 'Ready Now' : `${relativeDay} by ${timeStr}`;
+                const isClaiming = this.state.claimingId === inv.id;
 
                 return (
-                  <div key={inv.id} className="p-5 rounded-2xl bg-[#090E18] border border-amber-500/30 space-y-3 shadow-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFD700]/20 text-[#FFD700] border border-[#FFD700]/30 uppercase">
-                          {inv.planName}
-                        </span>
-                        <h4 className="text-xl font-black text-white mt-1 font-mono">${inv.amount?.toFixed(2)} USDT</h4>
+                  <div key={inv.id} className="p-5 rounded-2xl bg-[#090E18] border border-amber-500/30 space-y-3 shadow-lg flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFD700]/20 text-[#FFD700] border border-[#FFD700]/30 uppercase">
+                            {inv.planName}
+                          </span>
+                          <h4 className="text-xl font-black text-white mt-1 font-mono">${(Number(inv.amount || 0)).toFixed(2)} USDT</h4>
+                        </div>
+                        {isMatured ? (
+                          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 animate-pulse">
+                            READY TO CASHOUT
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
+                            ACTIVE YIELDING
+                          </span>
+                        )}
                       </div>
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
-                        ACTIVE YIELDING
-                      </span>
+
+                      <div className="space-y-1 text-xs text-gray-300">
+                        <div className="flex justify-between">
+                          <span>Profit Rate:</span>
+                          <span className="font-bold text-emerald-400">+{inv.profitPercent}% Return</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Expected Total Return:</span>
+                          <span className="font-mono font-bold text-[#FFD700]">${(Number(inv.totalReturn || 0)).toFixed(2)} USDT</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Duration:</span>
+                          <span className="text-gray-300 font-semibold">{inv.durationDays} Day{inv.durationDays > 1 ? 's' : ''} ({inv.durationDays * 24} Hours)</span>
+                        </div>
+                      </div>
+
+                      {/* Prominent Exact Cashout Time Card */}
+                      <div className={`p-3.5 rounded-xl border space-y-1.5 text-xs ${isMatured ? 'bg-emerald-500/15 border-emerald-500/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`font-extrabold uppercase tracking-wider text-[10px] flex items-center gap-1.5 ${isMatured ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            <Clock className="w-3.5 h-3.5 text-[#FFD700]" />
+                            {isMatured ? 'Payout Status:' : 'Expected Cashout Time:'}
+                          </span>
+                          <span className="text-[#FFD700] font-black font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded border border-[#FFD700]/20">
+                            {isMatured ? 'Available Now' : relativeMaturity}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[11px] text-gray-300 border-t border-amber-500/20 pt-1.5">
+                          <span className="text-gray-400">Exact Date & Time:</span>
+                          <span className="text-white font-bold font-mono">{fullMaturity}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-1 text-xs text-gray-300">
-                      <div className="flex justify-between">
-                        <span>Profit Rate:</span>
-                        <span className="font-bold text-emerald-400">+{inv.profitPercent}% Return</span>
+                    {isMatured ? (
+                      <button
+                        onClick={() => this.handleClaimPayout(inv.id)}
+                        disabled={isClaiming}
+                        className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#FFD700] to-amber-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 shadow-xl transition-all"
+                      >
+                        {isClaiming ? (
+                          <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Claim Payout (${(Number(inv.totalReturn || 0)).toFixed(2)} USDT)</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden pt-0.5 mt-2">
+                        <div className="bg-gradient-to-r from-amber-500 to-[#FFD700] h-full w-full rounded-full animate-pulse" />
                       </div>
-                      <div className="flex justify-between">
-                        <span>Expected Total Return:</span>
-                        <span className="font-mono font-bold text-[#FFD700]">${inv.totalReturn?.toFixed(2)} USDT</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Duration:</span>
-                        <span className="text-gray-300 font-semibold">{inv.durationDays} Day{inv.durationDays > 1 ? 's' : ''} ({inv.durationDays * 24} Hours)</span>
-                      </div>
-                    </div>
-
-                    {/* Prominent Exact Cashout Time Card */}
-                    <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-amber-400 font-extrabold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-[#FFD700]" />
-                          {isMatured ? 'Payout Ready:' : 'Expected Cashout Time:'}
-                        </span>
-                        <span className="text-[#FFD700] font-black font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded border border-[#FFD700]/20">
-                          {isMatured ? 'Available Now' : relativeMaturity}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-gray-300 border-t border-amber-500/20 pt-1.5">
-                        <span className="text-gray-400">Exact Date & Time:</span>
-                        <span className="text-white font-bold font-mono">{fullMaturity}</span>
-                      </div>
-                    </div>
-
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden pt-0.5">
-                      <div className="bg-gradient-to-r from-amber-500 to-[#FFD700] h-full w-full rounded-full animate-pulse" />
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -312,7 +359,7 @@ class OverviewTab extends Component {
               <Zap className="w-8 h-8 text-[#FFD700] mx-auto animate-bounce" />
               <h4 className="text-base font-bold text-white">No Active Investment Contracts Found</h4>
               <p className="text-xs text-gray-400 max-w-md mx-auto">
-                You currently have no active investment package. Choose a plan below to activate your contract using your available balance (<span className="text-[#FFD700] font-bold">${user.balance?.toFixed(2)} USDT</span>).
+                You currently have no active investment package. Choose a plan below to activate your contract using your available balance (<span className="text-[#FFD700] font-bold">${(Number(user.balance || 0)).toFixed(2)} USDT</span>).
               </p>
             </div>
           )}
@@ -325,14 +372,14 @@ class OverviewTab extends Component {
                 Select A Plan To Activate Now
               </h4>
               <span className="text-xs text-gray-400 font-mono">
-                Your Balance: <strong className="text-white">${user.balance?.toFixed(2)} USDT</strong>
+                Your Balance: <strong className="text-white">${(Number(user.balance || 0)).toFixed(2)} USDT</strong>
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {displayPlans.map((plan) => {
                 const currentVal = amounts[plan.id] !== undefined ? amounts[plan.id] : plan.minAmount;
-                const canAffordMin = user.balance >= plan.minAmount;
+                const canAffordMin = Number(user.balance || 0) >= plan.minAmount;
                 const isSubmitting = submittingPlanId === plan.id;
 
                 return (
@@ -385,7 +432,7 @@ class OverviewTab extends Component {
                       ) : (
                         <button
                           onClick={() => this.handleQuickInvest(plan)}
-                          disabled={isSubmitting || Number(currentVal) > user.balance}
+                          disabled={isSubmitting || Number(currentVal) > Number(user.balance || 0)}
                           className="btn-gold w-full py-2.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg"
                         >
                           {isSubmitting ? (

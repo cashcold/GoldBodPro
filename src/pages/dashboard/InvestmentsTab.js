@@ -15,6 +15,7 @@ class InvestmentsTab extends Component {
     this.state = {
       amounts: {},
       submittingPlanId: null,
+      claimingId: null,
       msg: null,
       error: null
     };
@@ -27,6 +28,25 @@ class InvestmentsTab extends Component {
         [planId]: val
       }
     }));
+  };
+
+  handleClaimPayout = async (invId) => {
+    const { refresh } = this.props;
+    this.setState({ claimingId: invId, msg: null, error: null });
+
+    try {
+      const res = await api.post(`/user/claim-investment/${invId}`);
+      this.setState({
+        claimingId: null,
+        msg: res.data.message || 'Payout successfully credited to your available balance!'
+      });
+      if (refresh) refresh();
+    } catch (err) {
+      this.setState({
+        claimingId: null,
+        error: err.response?.data?.error || 'Failed to claim payout.'
+      });
+    }
   };
 
   handleInvest = async (plan) => {
@@ -63,9 +83,11 @@ class InvestmentsTab extends Component {
 
   render() {
     const { data = {}, setTab } = this.props;
-    const { amounts, submittingPlanId, msg, error } = this.state;
+    const { amounts, submittingPlanId, claimingId, msg, error } = this.state;
     const { user = {}, plans = [], activeInvestments = [] } = data;
     const displayPlans = (plans && plans.length > 0) ? plans : DEFAULT_PLANS;
+    const runningContracts = activeInvestments.filter(i => i.status === 'active');
+    const completedContracts = activeInvestments.filter(i => i.status === 'completed');
 
     return (
       <div className="space-y-8 animate-in fade-in max-w-6xl mx-auto">
@@ -88,8 +110,8 @@ class InvestmentsTab extends Component {
               <Wallet className="w-3.5 h-3.5 text-[#FFD700]" />
               Available Balance
             </p>
-            <p className="text-2xl font-black text-gold-gradient font-mono mt-1">${user.balance?.toFixed(2)} USDT</p>
-            {user.balance === 0 && (
+            <p className="text-2xl font-black text-gold-gradient font-mono mt-1">${(Number(user.balance || 0)).toFixed(2)} USDT</p>
+            {Number(user.balance || 0) === 0 && (
               <button
                 onClick={() => setTab('deposit')}
                 className="mt-2 text-[11px] font-bold text-amber-400 hover:underline block"
@@ -114,20 +136,27 @@ class InvestmentsTab extends Component {
           </div>
         )}
 
-        {/* Active Contracts Section */}
+        {/* Active Running Contracts Section */}
         <div className="bg-[#0F172A]/90 backdrop-blur-xl border border-[#FFD700]/30 rounded-3xl p-6 shadow-2xl space-y-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#FFD700]" />
-            Your Running Contracts ({activeInvestments.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#FFD700]" />
+              Your Running Contracts ({runningContracts.length})
+            </h3>
+            {runningContracts.some(i => (i.endDate ? new Date(i.endDate).getTime() : 0) <= Date.now()) && (
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
+                Payouts Ready to Claim!
+              </span>
+            )}
+          </div>
 
-          {activeInvestments.length === 0 ? (
+          {runningContracts.length === 0 ? (
             <div className="p-6 rounded-2xl bg-[#090E18] border border-dashed border-amber-500/20 text-center space-y-1">
               <p className="text-xs text-gray-400">You currently have no active investments. Select a plan below to activate your contract.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeInvestments.map((inv) => {
+              {runningContracts.map((inv) => {
                 const startMs = inv.startDate ? new Date(inv.startDate).getTime() : Date.now();
                 const endMs = inv.endDate
                   ? new Date(inv.endDate).getTime()
@@ -144,73 +173,132 @@ class InvestmentsTab extends Component {
                 const tomorrow = new Date(now);
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 const isTomorrow = endDate.toDateString() === tomorrow.toDateString();
+                const isMatured = Date.now() >= endMs;
 
                 let relativeDay = dateStr;
-                if (isToday) relativeDay = 'Today';
+                if (isMatured) relativeDay = 'Matured / Ready to Cashout';
+                else if (isToday) relativeDay = 'Today';
                 else if (isTomorrow) relativeDay = 'Tomorrow';
 
                 const fullMaturity = `${dateStr} at ${timeStr}`;
-                const relativeMaturity = `${relativeDay} by ${timeStr}`;
-                const isMatured = Date.now() >= endMs;
+                const relativeMaturity = isMatured ? 'Ready Now' : `${relativeDay} by ${timeStr}`;
+                const isClaiming = claimingId === inv.id;
 
                 return (
-                  <div key={inv.id} className="p-5 rounded-2xl bg-[#090E18] border border-amber-500/30 space-y-3 shadow-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFD700]/20 text-[#FFD700] border border-[#FFD700]/30 uppercase">
-                          {inv.planName}
-                        </span>
-                        <h4 className="text-xl font-black text-white mt-1 font-mono">${inv.amount?.toFixed(2)} USDT</h4>
+                  <div key={inv.id} className="p-5 rounded-2xl bg-[#090E18] border border-amber-500/30 space-y-3 shadow-lg flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFD700]/20 text-[#FFD700] border border-[#FFD700]/30 uppercase">
+                            {inv.planName}
+                          </span>
+                          <h4 className="text-xl font-black text-white mt-1 font-mono">${(Number(inv.amount || 0)).toFixed(2)} USDT</h4>
+                        </div>
+                        {isMatured ? (
+                          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 animate-pulse">
+                            READY TO CASHOUT
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
+                            ACTIVE YIELDING
+                          </span>
+                        )}
                       </div>
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
-                        ACTIVE YIELDING
-                      </span>
+
+                      <div className="space-y-1 text-xs text-gray-300">
+                        <div className="flex justify-between">
+                          <span>Profit Rate:</span>
+                          <span className="font-bold text-emerald-400">+{inv.profitPercent}% Return</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Expected Total Return:</span>
+                          <span className="font-mono font-bold text-[#FFD700]">${(Number(inv.totalReturn || 0)).toFixed(2)} USDT</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Start Time:</span>
+                          <span className="text-gray-300 font-medium">
+                            {startDate.toLocaleDateString([], { month: 'short', day: 'numeric' })} at {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Prominent Exact Cashout Time Card */}
+                      <div className={`p-3.5 rounded-xl border space-y-1.5 text-xs ${isMatured ? 'bg-emerald-500/15 border-emerald-500/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`font-extrabold uppercase tracking-wider text-[10px] flex items-center gap-1.5 ${isMatured ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            <Clock className="w-3.5 h-3.5 text-[#FFD700]" />
+                            {isMatured ? 'Payout Status:' : 'Expected Cashout Time:'}
+                          </span>
+                          <span className="text-[#FFD700] font-black font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded border border-[#FFD700]/20">
+                            {isMatured ? 'Available Now' : relativeMaturity}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[11px] text-gray-300 border-t border-amber-500/20 pt-1.5">
+                          <span className="text-gray-400">Exact Date & Time:</span>
+                          <span className="text-white font-bold font-mono">{fullMaturity}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-1 text-xs text-gray-300">
-                      <div className="flex justify-between">
-                        <span>Profit Rate:</span>
-                        <span className="font-bold text-emerald-400">+{inv.profitPercent}% Return</span>
+                    {/* Claim Button or Progress bar */}
+                    {isMatured ? (
+                      <button
+                        onClick={() => this.handleClaimPayout(inv.id)}
+                        disabled={isClaiming}
+                        className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#FFD700] to-amber-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 shadow-xl transition-all"
+                      >
+                        {isClaiming ? (
+                          <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Claim Payout (${inv.totalReturn?.toFixed(2)} USDT)</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden pt-0.5 mt-2">
+                        <div className="bg-gradient-to-r from-amber-500 to-[#FFD700] h-full w-full rounded-full animate-pulse" />
                       </div>
-                      <div className="flex justify-between">
-                        <span>Expected Total Return:</span>
-                        <span className="font-mono font-bold text-[#FFD700]">${inv.totalReturn?.toFixed(2)} USDT</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Start Time:</span>
-                        <span className="text-gray-300 font-medium">
-                          {startDate.toLocaleDateString([], { month: 'short', day: 'numeric' })} at {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Prominent Exact Cashout Time Card */}
-                    <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-amber-400 font-extrabold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-[#FFD700]" />
-                          {isMatured ? 'Payout Ready:' : 'Expected Cashout Time:'}
-                        </span>
-                        <span className="text-[#FFD700] font-black font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded border border-[#FFD700]/20">
-                          {isMatured ? 'Available Now' : relativeMaturity}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-gray-300 border-t border-amber-500/20 pt-1.5">
-                        <span className="text-gray-400">Exact Date & Time:</span>
-                        <span className="text-white font-bold font-mono">{fullMaturity}</span>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden pt-0.5">
-                      <div className="bg-gradient-to-r from-amber-500 to-[#FFD700] h-full w-full rounded-full animate-pulse" />
-                    </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
         </div>
+
+        {/* Completed Contracts Section */}
+        {completedContracts.length > 0 && (
+          <div className="bg-[#0F172A]/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              Completed & Paid Out Contracts ({completedContracts.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {completedContracts.map((inv) => (
+                <div key={inv.id} className="p-4 rounded-2xl bg-[#090E18] border border-emerald-500/20 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      {inv.planName}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                      COMPLETED & PAID
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-400">Principal + Profit:</span>
+                    <span className="font-mono font-black text-emerald-300 text-sm">${inv.totalReturn?.toFixed(2)} USDT</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] text-gray-400 border-t border-slate-800 pt-1.5">
+                    <span>Matured Date:</span>
+                    <span className="font-mono text-gray-300">{inv.endDate ? new Date(inv.endDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Completed'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Subscribe to New Plan Grid */}
         <div>

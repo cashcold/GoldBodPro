@@ -151,7 +151,7 @@ class Navbar extends Component {
                       className="btn-gold !py-2 !px-4 text-xs font-bold"
                     >
                       <LayoutDashboard className="w-3.5 h-3.5" />
-                      Dashboard (${user.balance.toFixed(2)})
+                      Dashboard (${(Number(user?.balance || 0)).toFixed(2)})
                     </Link>
                   )}
                   <button 

@@ -91,7 +91,7 @@ class TransactionsTab extends Component {
                       </td>
                       <td className="px-4 py-3 text-white font-semibold">{tx.description}</td>
                       <td className={`px-4 py-3 font-mono font-bold text-sm ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isPositive ? '+' : '-'}${tx.amount.toFixed(2)} USDT
+                        {isPositive ? '+' : '-'}${(Number(tx.amount || 0)).toFixed(2)} USDT
                       </td>
                       <td className="px-4 py-3 text-gray-400">{new Date(tx.createdAt).toLocaleString()}</td>
                       <td className="px-4 py-3">

@@ -2,28 +2,68 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { createServer as createViteServer } from 'vite';
 import { connectDB } from './server/config/db.js';
-import apiRoutes from './server/routes/api.js';
+import apiRoutes, { seedMongoDbIfEmpty } from './server/routes/api.js';
 
-dotenv.config();
+// Load .env and override any existing process.env values
+dotenv.config({ override: true });
 
 async function startServer() {
   const app = express();
   
-  // 1. Bind dynamically to Heroku's PORT env variable
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
-  // Connect Database
+  // Connect Database and seed initial master data
   await connectDB();
+  if (mongoose.connection.readyState === 1) {
+    await seedMongoDbIfEmpty().catch(() => {});
+  }
 
-  // Middlewares
-  app.use(cors());
+  // Middlewares & Full CORS Configuration
+  app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  }));
+  app.options('*', cors());
+
+  // Additional CORS headers for strict proxy / hosting environments
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+  // Ensure database is live before processing API requests
+  app.use('/api', async (req, res, next) => {
+    if (mongoose.connection.readyState !== 1) {
+      connectDB().catch(() => {});
+    }
+    next();
+  });
+
   // API Routes
   app.use('/api', apiRoutes);
+
+  // Database offline error fallback middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err?.name === 'MongooseError' || err?.name === 'MongoNetworkError' || err?.message?.includes('buffering timed out')) {
+      console.warn('[AI Studio] Database offline — fallback handling');
+      if (req.method === 'GET') {
+        return res.json(req.path.endsWith('s') || req.path.endsWith('s/') ? [] : {});
+      }
+      return res.status(503).json({ error: 'Service temporarily unavailable (database offline)' });
+    }
+    next(err);
+  });
 
   // Serve static uploads or media if any
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -36,19 +76,11 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // 2. Serve Vite output assets in production
-    const clientDistPath = path.join(process.cwd(), 'dist', 'client');
-    const fallbackDistPath = path.join(process.cwd(), 'dist');
-
-    app.use(express.static(clientDistPath));
-    app.use(express.static(fallbackDistPath));
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
 
     app.get('*', (req, res) => {
-      res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
-        if (err) {
-          res.sendFile(path.join(fallbackDistPath, 'index.html'));
-        }
-      });
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 

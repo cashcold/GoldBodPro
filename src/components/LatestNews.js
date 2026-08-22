@@ -53,9 +53,9 @@ class LatestNews extends Component {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {blogs.map((blog) => (
+            {blogs.map((blog, idx) => (
               <div
-                key={blog.id}
+                key={blog.id || blog._id || `blog-item-${idx}`}
                 className="bg-[#0F172A]/80 backdrop-blur-xl border border-[#FFD700]/20 rounded-3xl overflow-hidden hover:border-[#FFD700] transition-all duration-300 shadow-xl flex flex-col justify-between group"
               >
                 <div>

@@ -115,7 +115,7 @@ class ReferralTab extends Component {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-400">{new Date(r.joinedAt).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-400">+${r.commission.toFixed(2)} USDT</td>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-400">+${(Number(r.commission || 0)).toFixed(2)} USDT</td>
                     </tr>
                   ))}
                 </tbody>

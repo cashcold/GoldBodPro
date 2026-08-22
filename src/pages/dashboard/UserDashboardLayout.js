@@ -47,6 +47,11 @@ class UserDashboardLayout extends Component {
 
   componentDidMount() {
     this.fetchDashboardData();
+    window.addEventListener('balanceUpdated', this.fetchDashboardData);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('balanceUpdated', this.fetchDashboardData);
   }
 
   componentDidUpdate(prevProps) {
@@ -74,7 +79,19 @@ class UserDashboardLayout extends Component {
     const { activeTab, dashboardData } = this.state;
     const { user } = this.context;
 
-    if (!dashboardData) return null;
+    // Admin tab has its own independent data loaders
+    if (activeTab === 'admin') {
+      return <AdminTab refresh={this.fetchDashboardData} />;
+    }
+
+    if (!dashboardData) {
+      return (
+        <div className="flex flex-col items-center justify-center p-16 space-y-4">
+          <div className="w-8 h-8 border-2 border-[#FFD700] border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-bold text-gray-400">Loading Dashboard Data...</span>
+        </div>
+      );
+    }
 
     switch (activeTab) {
       case 'overview':
@@ -95,8 +112,6 @@ class UserDashboardLayout extends Component {
         return <SupportTab data={dashboardData} refresh={this.fetchDashboardData} />;
       case 'profile':
         return <ProfileTab user={dashboardData.user || user} refresh={this.fetchDashboardData} />;
-      case 'admin':
-        return <AdminTab refresh={this.fetchDashboardData} />;
       default:
         return <OverviewTab data={dashboardData} refresh={this.fetchDashboardData} setTab={this.setTab} />;
     }
@@ -228,7 +243,7 @@ class UserDashboardLayout extends Component {
               <div className="bg-[#0F172A] border border-[#FFD700]/30 px-4 py-2 rounded-2xl flex items-center gap-2">
                 <span className="text-xs text-gray-400 hidden sm:inline">Balance:</span>
                 <span className="text-sm font-black text-gold-gradient font-mono">
-                  ${currentUser.balance?.toFixed(2)} USDT
+                  ${(Number(currentUser?.balance || 0)).toFixed(2)} USDT
                 </span>
               </div>
 

@@ -272,7 +272,7 @@ class DepositTab extends Component {
                 {deposits?.map((d) => (
                   <tr key={d.id}>
                     <td className="px-4 py-3 font-bold text-amber-400">{d.gateway}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-white">${d.amount.toFixed(2)}</td>
+                    <td className="px-4 py-3 font-mono font-bold text-white">${(Number(d.amount || 0)).toFixed(2)}</td>
                     <td className="px-4 py-3 font-mono text-gray-400 truncate max-w-[120px]">{d.txHash}</td>
                     <td className="px-4 py-3 text-gray-400">{new Date(d.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
