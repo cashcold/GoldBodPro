@@ -78,7 +78,7 @@ const DepositGoldBodProSchema = new Schema({
   userEmail: { type: String },
   userName: { type: String },
   amount: { type: Number, required: true },
-  gateway: { type: String, required: true }, // BTC, ETH, USDT_TRC20, USDT_BEP20, MOBILE_MONEY
+  gateway: { type: String, required: true }, // BTC, ETH, USDT_TRC20, USDT_BEP20
   walletAddress: { type: String },
   txHash: { type: String, default: '' },
   proofUrl: { type: String, default: '' },

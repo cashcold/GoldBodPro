@@ -108,7 +108,7 @@ class Testimonials extends Component {
       date: '1 week ago',
       verified: true,
       plan: 'Starter Plan ($50)',
-      review: 'Tested with $50 minimum deposit via Mobile Money and received my $5 welcome bonus. Yield profits hit my account daily and cashouts are fast and seamless. I will be scaling up to the Platinum plan next!'
+      review: 'Tested with $50 minimum deposit via USDT TRC20 and received my $5 welcome bonus. Yield profits hit my account daily and cashouts are fast and seamless. I will be scaling up to the Platinum plan next!'
     },
     {
       id: 't_5',

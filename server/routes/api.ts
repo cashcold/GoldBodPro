@@ -357,7 +357,7 @@ const MEMORY_DB: { users: any[]; [key: string]: any } = {
     { type: 'Deposit', username: 'crypto_king99', country: '🇺🇸 US', amount: 2500, currency: 'USDT', gateway: 'USDT TRC20', time: '1 min ago' },
     { type: 'Withdrawal', username: 'satoshi_investor', country: '🇬🇧 UK', amount: 850, currency: 'BTC', gateway: 'Bitcoin', time: '3 mins ago' },
     { type: 'Deposit', username: 'berlin_trader', country: '🇩🇪 DE', amount: 1200, currency: 'ETH', gateway: 'Ethereum', time: '5 mins ago' },
-    { type: 'Withdrawal', username: 'momo_pro', country: '🇬🇭 GH', amount: 400, currency: 'USD', gateway: 'Mobile Money', time: '8 mins ago' },
+    { type: 'Withdrawal', username: 'crypto_trader', country: '🇬🇭 GH', amount: 400, currency: 'USDT', gateway: 'USDT TRC20', time: '8 mins ago' },
     { type: 'Deposit', username: 'tokyo_whale', country: '🇯🇵 JP', amount: 5000, currency: 'USDT', gateway: 'USDT BEP20', time: '12 mins ago' },
     { type: 'Withdrawal', username: 'paris_gold', country: '🇫🇷 FR', amount: 1750, currency: 'USDT', gateway: 'USDT TRC20', time: '15 mins ago' }
   ]

@@ -188,7 +188,7 @@ class Statistics extends Component {
                 </div>
                 <div className="flex items-center gap-1 text-emerald-400 font-semibold">
                   <ArrowUpRight className="w-4 h-4" />
-                  <span>Crypto & MoMo</span>
+                  <span>Crypto Gateways</span>
                 </div>
               </div>
             </div>

@@ -36,7 +36,7 @@ class WhyChooseUs extends Component {
       {
         icon: ArrowDownCircle,
         title: 'Fast Deposits',
-        description: 'Supports Bitcoin, Ethereum, USDT TRC20/BEP20, and instant Mobile Money gateways.'
+        description: 'Supports Bitcoin, Ethereum, USDT TRC20/BEP20, and instant decentralized crypto gateways.'
       },
       {
         icon: Headphones,
