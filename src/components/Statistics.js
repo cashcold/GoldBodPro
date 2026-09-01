@@ -20,18 +20,18 @@ class Statistics extends Component {
   constructor(props) {
     super(props);
     
-    // Platform launch date anchor set to Aug 2, 2026 (auto-incrementing)
-    const LAUNCH_DATE = new Date('2026-08-02T00:00:00Z').getTime();
+    // Platform launch date anchor set to Aug 31, 2026 (auto-incrementing)
+    const LAUNCH_DATE = new Date('2026-08-31T00:00:00Z').getTime();
     const now = Date.now();
-    const autoRunningDays = Math.max(2, Math.floor((now - LAUNCH_DATE) / (1000 * 60 * 60 * 24)));
-    const fourSecondTicks = Math.floor((now - LAUNCH_DATE) / 4000);
-    const fiveMinTicks = Math.floor((now - LAUNCH_DATE) / (1000 * 60 * 5));
+    const autoRunningDays = Math.max(1, Math.floor((now - LAUNCH_DATE) / (1000 * 60 * 60 * 24)));
+    const fourSecondTicks = Math.max(0, Math.floor((now - LAUNCH_DATE) / 4000));
+    const fiveMinTicks = Math.max(0, Math.floor((now - LAUNCH_DATE) / (1000 * 60 * 5)));
     const initialCompanyMoney = 876834764 + (autoRunningDays * 9500);
 
     this.state = {
       runningDays: autoRunningDays,
-      launchDate: 'Aug 2, 2026',
-      yearsOfOperation: 'Aug 2, 2026',
+      launchDate: 'Aug 31, 2026',
+      yearsOfOperation: 'Aug 31, 2026',
       totalActiveMiners: 36886 + (fiveMinTicks * 15),
       totalPayouts: 142850800 + (fourSecondTicks * 920),
       totalDeposited: 284520450 + (fourSecondTicks * 1850),
@@ -57,8 +57,8 @@ class Statistics extends Component {
       if (res.data) {
         this.setState({
           runningDays: res.data.runningDays || this.state.runningDays,
-          launchDate: res.data.launchDate || 'Aug 2, 2026',
-          yearsOfOperation: res.data.launchDate || 'Aug 2, 2026',
+          launchDate: res.data.launchDate || 'Aug 31, 2026',
+          yearsOfOperation: res.data.launchDate || 'Aug 31, 2026',
           totalActiveMiners: res.data.totalActiveMiners || res.data.activeInvestors || this.state.totalActiveMiners,
           totalPayouts: res.data.totalPayouts || res.data.totalWithdrawn || (this.state.totalPayouts + 920),
           totalDeposited: res.data.totalDeposited || (this.state.totalDeposited + 1850),
@@ -69,8 +69,8 @@ class Statistics extends Component {
       }
     } catch (err) {
       // Auto-increment locally if offline/error
-      const LAUNCH_DATE = new Date('2026-08-02T00:00:00Z').getTime();
-      const fiveMinTicks = Math.floor((Date.now() - LAUNCH_DATE) / (1000 * 60 * 5));
+      const LAUNCH_DATE = new Date('2026-08-31T00:00:00Z').getTime();
+      const fiveMinTicks = Math.max(0, Math.floor((Date.now() - LAUNCH_DATE) / (1000 * 60 * 5)));
       this.setState(prev => ({
         totalActiveMiners: 36886 + (fiveMinTicks * 15),
         totalPayouts: prev.totalPayouts + 920,

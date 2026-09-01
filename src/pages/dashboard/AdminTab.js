@@ -314,7 +314,7 @@ class AdminTab extends Component {
               <ShieldCheck className="w-4 h-4 text-[#FFD700]" />
             </div>
             <p className="text-xl font-black text-[#FFD700] mt-2 font-mono">
-              ${(876834764 + (Math.max(2, Math.floor((Date.now() - new Date('2026-08-02T00:00:00Z').getTime()) / (1000 * 60 * 60 * 24))) * 9500)).toLocaleString()}
+              ${(876834764 + (Math.max(1, Math.floor((Date.now() - new Date('2026-08-31T00:00:00Z').getTime()) / (1000 * 60 * 60 * 24))) * 9500)).toLocaleString()}
             </p>
             <span className="text-[10px] text-emerald-400 font-semibold">+ $9,500 Auto-credit Every 24h</span>
           </div>

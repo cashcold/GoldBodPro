@@ -1283,18 +1283,18 @@ router.get('/auth/smtp-status', (req: Request, res: Response) => {
 });
 
 // --- PUBLIC SITE DATA API ---
-// Platform benchmark start date set to Aug 2, 2026 (so on Aug 4, 2026 it is 2 days, auto-incrementing +1 every 24h)
-const PLATFORM_LAUNCH_TIMESTAMP = new Date('2026-08-02T00:00:00Z').getTime();
+// Platform benchmark start date set to Aug 31, 2026 (auto-incrementing +1 every 24h)
+const PLATFORM_LAUNCH_TIMESTAMP = new Date('2026-08-31T00:00:00Z').getTime();
 
 router.get('/stats/overview', (req: Request, res: Response) => {
   const now = Date.now();
-  const elapsedDays = Math.max(2, Math.floor((now - PLATFORM_LAUNCH_TIMESTAMP) / (1000 * 60 * 60 * 24)));
+  const elapsedDays = Math.max(1, Math.floor((now - PLATFORM_LAUNCH_TIMESTAMP) / (1000 * 60 * 60 * 24)));
   
   // Calculate ticks since platform launch anchor
-  const fourSecondTicks = Math.floor((now - PLATFORM_LAUNCH_TIMESTAMP) / 4000);
+  const fourSecondTicks = Math.max(0, Math.floor((now - PLATFORM_LAUNCH_TIMESTAMP) / 4000));
   
   // Calculate 5-minute ticks (300,000 ms) for active miners (+15 miners every 5 minutes)
-  const fiveMinuteTicks = Math.floor((now - PLATFORM_LAUNCH_TIMESTAMP) / (1000 * 60 * 5));
+  const fiveMinuteTicks = Math.max(0, Math.floor((now - PLATFORM_LAUNCH_TIMESTAMP) / (1000 * 60 * 5)));
   const minerBonus = fiveMinuteTicks * 15;
 
   const tickerDepositsBonus = fourSecondTicks * 1850;
@@ -1320,8 +1320,8 @@ router.get('/stats/overview', (req: Request, res: Response) => {
 
   return res.json({
     runningDays: elapsedDays,
-    launchDate: 'Aug 2, 2026',
-    yearsOfOperation: 'Aug 2, 2026',
+    launchDate: 'Aug 31, 2026',
+    yearsOfOperation: 'Aug 31, 2026',
     totalActiveMiners: totalActiveMiners,
     totalPayouts: totalPayouts,
     totalDeposited: 284520450.00 + approvedDepositsTotal + tickerDepositsBonus,
