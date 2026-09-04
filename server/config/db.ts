@@ -99,13 +99,31 @@ export async function connectDB(forceReconnect = false) {
     // Mask password for display
     dbStatusInfo.maskedUri = formattedUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@');
 
-    // If already connected to this EXACT URI and not forcing reconnect, reuse connection
-    if (mongoose.connection.readyState === 1 && !forceReconnect && dbStatusInfo.activeUri === formattedUri) {
+    // If already connected and not forcing reconnect, reuse existing connection (vital for serverless cold/warm starts)
+    if (mongoose.connection.readyState === 1 && !forceReconnect) {
       dbStatusInfo.connected = true;
       dbStatusInfo.state = 'connected';
       dbStatusInfo.host = mongoose.connection.host || 'MongoDB Atlas';
+      dbStatusInfo.activeUri = formattedUri;
       dbStatusInfo.lastError = null;
       return true;
+    }
+
+    // If currently connecting in another concurrent request, wait for it to complete
+    if ((mongoose.connection.readyState as number) === 2) {
+      let waited = 0;
+      while ((mongoose.connection.readyState as number) === 2 && waited < 25) {
+        await new Promise(r => setTimeout(r, 100));
+        waited++;
+      }
+      if ((mongoose.connection.readyState as number) === 1) {
+        dbStatusInfo.connected = true;
+        dbStatusInfo.state = 'connected';
+        dbStatusInfo.host = mongoose.connection.host || 'MongoDB Atlas';
+        dbStatusInfo.activeUri = formattedUri;
+        dbStatusInfo.lastError = null;
+        return true;
+      }
     }
 
     if (isConnecting) return false;
@@ -121,6 +139,7 @@ export async function connectDB(forceReconnect = false) {
       await mongoose.connect(formattedUri, { 
         serverSelectionTimeoutMS: 10000,
         connectTimeoutMS: 10000,
+        maxPoolSize: 10,
         dbName: dbName
       });
 

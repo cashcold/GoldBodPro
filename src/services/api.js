@@ -8,19 +8,7 @@ const getBaseURL = () => {
     return `${envUrl.trim().replace(/\/$/, '')}/api`;
   }
   
-  // When running on Vercel, Netlify or external static hosts without local Express server
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (
-      hostname.includes('vercel.app') ||
-      hostname.includes('netlify.app') ||
-      hostname.includes('github.io')
-    ) {
-      return HEROKU_BACKEND_URL;
-    }
-  }
-
-  // Default to relative /api for local dev, AI Studio preview, and when served directly from Heroku
+  // Default to relative /api for Vercel serverless, Google AI Studio preview, and localhost
   return '/api';
 };
 
