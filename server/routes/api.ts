@@ -811,6 +811,18 @@ router.post('/system/sync-all-to-db', async (req: Request, res: Response) => {
 });
 
 // --- AUTH ROUTES ---
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const identityQuery = (value: string) => {
+  const exactValue = `^${escapeRegex(value)}$`;
+  return {
+    $or: [
+      { email: { $regex: exactValue, $options: 'i' } },
+      { username: { $regex: exactValue, $options: 'i' } }
+    ]
+  };
+};
+
 router.post('/auth/register', async (req: Request, res: Response) => {
   try {
     const { name, email, username, password, country, phone, referralCode } = req.body;
@@ -833,7 +845,10 @@ router.post('/auth/register', async (req: Request, res: Response) => {
     if (mongoose.connection.readyState === 1) {
       try {
         const existingInMongo = await (userGoldBodPro as any).findOne({
-          $or: [{ email: lowerEmail }, { username: lowerUsername }]
+          $or: [
+            { email: { $regex: `^${escapeRegex(lowerEmail)}$`, $options: 'i' } },
+            { username: { $regex: `^${escapeRegex(lowerUsername)}$`, $options: 'i' } }
+          ]
         });
         if (existingInMongo) {
           // If password matches existing record, log the user in immediately
@@ -999,9 +1014,7 @@ router.post('/auth/login', async (req: Request, res: Response) => {
 
     if (mongoose.connection.readyState === 1) {
       try {
-        const dbDoc: any = await (userGoldBodPro as any).findOne({
-          $or: [{ email: lowerInput }, { username: lowerInput }]
-        });
+        const dbDoc: any = await (userGoldBodPro as any).findOne(identityQuery(lowerInput));
 
         if (dbDoc) {
           user = {
