@@ -50,13 +50,13 @@ export function getMongoUri(): string | null {
 export function formatMongoUri(rawUri: string): { formattedUri: string; dbName: string } {
   let uri = rawUri.trim().replace(/^["']|["']$/g, '');
   
-  let dbName = 'PrimeGoldResources';
+  let dbName = process.env.MONGODB_DB?.trim() || 'PrimeGoldResources';
 
   // Check if a specific database is specified in path (e.g. mongodb.net/PrimeGoldResources?...)
   const pathMatch = uri.match(/mongodb(?:\+srv)?:\/\/[^/]+\/([^?/\s]+)/i);
   if (pathMatch && pathMatch[1] && pathMatch[1].trim()) {
     const extracted = pathMatch[1].trim();
-    if (extracted.toLowerCase() !== 'capgainco' && extracted.toLowerCase() !== 'admin' && extracted.toLowerCase() !== 'test') {
+    if (extracted.toLowerCase() !== 'admin' && extracted.toLowerCase() !== 'test') {
       dbName = extracted;
     }
   }

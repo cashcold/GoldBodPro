@@ -592,7 +592,7 @@ class AdminTab extends Component {
                   <thead>
                     <tr className="border-b border-slate-800 text-gray-400 uppercase">
                       <th className="py-3 px-2">ID / Date</th>
-                      <th className="py-3 px-2">User ID</th>
+                      <th className="py-3 px-2">Username</th>
                       <th className="py-3 px-2">Gateway</th>
                       <th className="py-3 px-2">Amount</th>
                       <th className="py-3 px-2">Tx Hash</th>
@@ -607,7 +607,7 @@ class AdminTab extends Component {
                           <div>{d.id}</div>
                           <div className="text-[10px] text-gray-500">{new Date(d.createdAt).toLocaleDateString()}</div>
                         </td>
-                        <td className="py-3 px-2 font-mono text-gray-400">{d.userId}</td>
+                        <td className="py-3 px-2 font-mono text-gray-300">{d.userUsername || d.userName || d.userEmail || d.userId}</td>
                         <td className="py-3 px-2 font-bold text-amber-300">{d.gateway}</td>
                         <td className="py-3 px-2 font-black text-emerald-400 font-mono">${(Number(d.amount || 0)).toFixed(2)}</td>
                         <td className="py-3 px-2 font-mono text-gray-400 truncate max-w-[120px]">{d.txHash || 'N/A'}</td>
@@ -666,7 +666,7 @@ class AdminTab extends Component {
                   <thead>
                     <tr className="border-b border-slate-800 text-gray-400 uppercase">
                       <th className="py-3 px-2">ID / Date</th>
-                      <th className="py-3 px-2">User ID</th>
+                      <th className="py-3 px-2">Username</th>
                       <th className="py-3 px-2">Gateway</th>
                       <th className="py-3 px-2">Destination Address</th>
                       <th className="py-3 px-2">Amount</th>
@@ -681,7 +681,7 @@ class AdminTab extends Component {
                           <div>{w.id}</div>
                           <div className="text-[10px] text-gray-500">{new Date(w.createdAt).toLocaleDateString()}</div>
                         </td>
-                        <td className="py-3 px-2 font-mono text-gray-400">{w.userId}</td>
+                        <td className="py-3 px-2 font-mono text-gray-300">{w.userUsername || w.userName || w.userEmail || w.userId}</td>
                         <td className="py-3 px-2 font-bold text-amber-300">{w.gateway}</td>
                         <td className="py-3 px-2 font-mono text-gray-300 truncate max-w-[140px]">{w.walletAddress}</td>
                         <td className="py-3 px-2 font-black text-[#FFD700] font-mono">${(Number(w.amount || 0)).toFixed(2)}</td>

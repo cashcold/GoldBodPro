@@ -841,9 +841,11 @@ router.post('/auth/register', async (req: Request, res: Response) => {
       await connectDB();
     }
 
-    // Check MongoDB if connected (authoritative source of truth)
-    if (mongoose.connection.readyState === 1) {
-      try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'MongoDB is unavailable. Registration is temporarily disabled.' });
+    }
+
+    try {
         const existingInMongo = await (userGoldBodPro as any).findOne({
           $or: [
             { email: { $regex: `^${escapeRegex(lowerEmail)}$`, $options: 'i' } },
@@ -851,6 +853,10 @@ router.post('/auth/register', async (req: Request, res: Response) => {
           ]
         });
         if (existingInMongo) {
+          const conflictFields = [
+            existingInMongo.email?.toLowerCase() === lowerEmail ? 'email' : null,
+            existingInMongo.username?.toLowerCase() === lowerUsername ? 'username' : null
+          ].filter(Boolean).join(' and ');
           // If password matches existing record, log the user in immediately
           let isMatch = false;
           if (existingInMongo.passwordHash) {
@@ -905,26 +911,15 @@ router.post('/auth/register', async (req: Request, res: Response) => {
             return res.json({ token, user: safeUser, message: 'Account recognized in database. Logged in successfully!' });
           }
 
-          return res.status(400).json({ error: 'An account with this email or username already exists in MongoDB database. Please log in with your password.' });
+          return res.status(400).json({ error: `An account with this ${conflictFields || 'email or username'} already exists in MongoDB database. Please log in with your password.` });
         }
-      } catch (checkErr) {
-        console.warn('MongoDB existing user check note:', checkErr);
-      }
-    } else {
-      // If MongoDB is offline, check Memory DB. If exists, update credentials & log in seamlessly
-      const existing = MEMORY_DB.users.find(u => u.email.toLowerCase() === lowerEmail || u.username.toLowerCase() === lowerUsername);
-      if (existing) {
-        existing.passwordHash = bcrypt.hashSync(password, 10);
-        existing.name = name || username;
-        const token = jwt.sign({ id: existing.id, email: existing.email, role: existing.role, username: existing.username }, JWT_SECRET, { expiresIn: '7d' });
-        const { passwordHash: _, ...safeUser } = existing;
-        return res.json({ token, user: safeUser, message: 'Account updated and logged in successfully!' });
-      }
+    } catch (checkErr: any) {
+      console.error('MongoDB registration lookup failed:', checkErr);
+      return res.status(503).json({ error: 'MongoDB registration lookup failed. Please try again.' });
     }
 
     let mongoUserDoc: any = null;
-    if (mongoose.connection.readyState === 1) {
-      try {
+    try {
         mongoUserDoc = await (userGoldBodPro as any).create({
           name: name || username,
           email: lowerEmail,
@@ -952,12 +947,13 @@ router.post('/auth/register', async (req: Request, res: Response) => {
           createdAt: new Date()
         });
         console.log('✅ Registered user saved directly to MongoDB Atlas [users collection]:', mongoUserDoc._id, mongoUserDoc.email);
-      } catch (dbErr: any) {
-        console.error('⚠️ MongoDB user registration save error:', dbErr.message || dbErr);
-        if (dbErr.code === 11000) {
-          return res.status(400).json({ error: 'An account with this email or username already exists in MongoDB database.' });
-        }
+    } catch (dbErr: any) {
+      console.error('⚠️ MongoDB user registration save error:', dbErr.message || dbErr);
+      if (dbErr.code === 11000) {
+        const duplicateField = dbErr.keyPattern?.email ? 'email' : dbErr.keyPattern?.username ? 'username' : 'email or username';
+        return res.status(400).json({ error: `An account with this ${duplicateField} already exists in MongoDB database.` });
       }
+      return res.status(503).json({ error: 'MongoDB could not save the account. Please try again.' });
     }
 
     const userId = mongoUserDoc ? mongoUserDoc._id.toString() : 'usr_' + Date.now();
@@ -989,6 +985,7 @@ router.post('/auth/register', async (req: Request, res: Response) => {
       createdAt: new Date().toISOString()
     };
 
+    MEMORY_DB.users = MEMORY_DB.users.filter(u => u.id !== newUser.id);
     MEMORY_DB.users.push(newUser);
 
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, username: newUser.username }, JWT_SECRET, { expiresIn: '7d' });
@@ -1012,8 +1009,11 @@ router.post('/auth/login', async (req: Request, res: Response) => {
 
     let user: any = null;
 
-    if (mongoose.connection.readyState === 1) {
-      try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'MongoDB is unavailable. Login is temporarily disabled.' });
+    }
+
+    try {
         const dbDoc: any = await (userGoldBodPro as any).findOne(identityQuery(lowerInput));
 
         if (dbDoc) {
@@ -1052,18 +1052,13 @@ router.post('/auth/login', async (req: Request, res: Response) => {
             MEMORY_DB.users.push(user);
           }
         }
-      } catch (dbErr) {
-        console.warn('MongoDB login lookup error:', dbErr);
-      }
+    } catch (dbErr) {
+      console.error('MongoDB login lookup error:', dbErr);
+      return res.status(503).json({ error: 'MongoDB login lookup failed. Please try again.' });
     }
 
     if (!user) {
-      if (mongoose.connection.readyState !== 1) {
-        user = MEMORY_DB.users.find(u => u.email.toLowerCase() === lowerInput || u.username.toLowerCase() === lowerInput);
-      } else {
-        // If MongoDB is connected, only allow fallback for initial system demo accounts if missing in Mongo
-        user = MEMORY_DB.users.find(u => (u.id === 'usr_admin' || u.id === 'usr_1' || u.id === 'usr_admin_pro') && (u.email.toLowerCase() === lowerInput || u.username.toLowerCase() === lowerInput));
-      }
+      return res.status(400).json({ error: 'Invalid email/username or password.' });
     }
 
     if (!user) {
@@ -2688,6 +2683,7 @@ router.get('/admin/overview', authenticateToken, requireAdmin, async (req: AuthR
           id: d._id.toString(),
           userId: String(d.userId),
           userName: u ? u.name : (d.userName || 'Investor User'),
+          userUsername: u ? u.username : (d.userUsername || d.username || ''),
           userEmail: u ? u.email : (d.userEmail || 'user@goldbod.com'),
           amount: Number(d.amount),
           gateway: d.gateway || 'USDT TRC20',
@@ -2704,6 +2700,7 @@ router.get('/admin/overview', authenticateToken, requireAdmin, async (req: AuthR
           id: w._id.toString(),
           userId: String(w.userId),
           userName: u ? u.name : (w.userName || 'Investor User'),
+          userUsername: u ? u.username : (w.userUsername || w.username || ''),
           userEmail: u ? u.email : (w.userEmail || 'user@goldbod.com'),
           amount: Number(w.amount),
           gateway: w.gateway || 'USDT TRC20',
