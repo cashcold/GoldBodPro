@@ -27,91 +27,94 @@ const JWT_SECRET = process.env.JWT_SECRET || 'GOLDBOD_PRO_SUPER_SECRET_KEY_2026'
 // Password Reset OTP Store: email -> { code, expiresAt, email }
 const PASSWORD_RESET_STORE = new Map<string, { code: string; expiresAt: number; email: string }>();
 
+// Default System Initial Users (strictly static seeds, never contaminated with dynamic registrations)
+const INITIAL_SYSTEM_USERS = [
+  {
+    id: 'usr_1',
+    name: 'Alex Vance',
+    email: 'investor@goldbod.pro',
+    username: 'alexvance',
+    passwordHash: bcrypt.hashSync('password123', 10),
+    role: 'user',
+    country: 'United States',
+    phone: '+1 (555) 234-5678',
+    balance: 1250.00,
+    totalDeposited: 2000.00,
+    totalWithdrawn: 750.00,
+    activeInvestment: 1000.00,
+    todaysProfit: 45.50,
+    totalProfit: 380.00,
+    referralIncome: 125.00,
+    pendingWithdrawals: 0.00,
+    hashPower: 450, // TH/s
+    referralCode: 'GBP-ALEX88',
+    referredBy: null,
+    firstDepositRewardGiven: false,
+    claimedMilestones: [] as number[],
+    kycDocType: 'Passport',
+    kycDocUrl: '',
+    kycStatus: 'verified' as 'verified' | 'pending' | 'unverified',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr_admin',
+    name: 'GoldBod Admin',
+    email: 'admin@goldbod.com',
+    username: 'admin',
+    passwordHash: bcrypt.hashSync('admin12345@', 10),
+    role: 'admin',
+    country: 'United Kingdom',
+    phone: '+44 20 7946 0912',
+    balance: 50000.00,
+    totalDeposited: 100000.00,
+    totalWithdrawn: 50000.00,
+    activeInvestment: 25000.00,
+    todaysProfit: 1250.00,
+    totalProfit: 18500.00,
+    referralIncome: 3400.00,
+    pendingWithdrawals: 0.00,
+    hashPower: 2500,
+    referralCode: 'GBP-ADMIN01',
+    referredBy: null,
+    firstDepositRewardGiven: false,
+    claimedMilestones: [] as number[],
+    kycDocType: 'National ID',
+    kycDocUrl: '',
+    kycStatus: 'verified' as 'verified' | 'pending' | 'unverified',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'usr_admin_pro',
+    name: 'GoldBod Admin',
+    email: 'admin@goldbod.pro',
+    username: 'adminpro',
+    passwordHash: bcrypt.hashSync('admin12345@', 10),
+    role: 'admin',
+    country: 'United Kingdom',
+    phone: '+44 20 7946 0912',
+    balance: 50000.00,
+    totalDeposited: 100000.00,
+    totalWithdrawn: 50000.00,
+    activeInvestment: 25000.00,
+    todaysProfit: 1250.00,
+    totalProfit: 18500.00,
+    referralIncome: 3400.00,
+    pendingWithdrawals: 0.00,
+    hashPower: 2500,
+    referralCode: 'GBP-ADMIN02',
+    referredBy: null,
+    firstDepositRewardGiven: false,
+    claimedMilestones: [] as number[],
+    kycDocType: 'National ID',
+    kycDocUrl: '',
+    kycStatus: 'verified' as 'verified' | 'pending' | 'unverified',
+    createdAt: new Date().toISOString()
+  }
+];
+
 // In-Memory Data Store with default seeds (works instantly in any container, backed by Mongoose when DB connected)
 const MEMORY_DB: { users: any[]; [key: string]: any } = {
-  users: [
-    {
-      id: 'usr_1',
-      name: 'Alex Vance',
-      email: 'investor@goldbod.pro',
-      username: 'alexvance',
-      passwordHash: bcrypt.hashSync('password123', 10),
-      role: 'user',
-      country: 'United States',
-      phone: '+1 (555) 234-5678',
-      balance: 1250.00,
-      totalDeposited: 2000.00,
-      totalWithdrawn: 750.00,
-      activeInvestment: 1000.00,
-      todaysProfit: 45.50,
-      totalProfit: 380.00,
-      referralIncome: 125.00,
-      pendingWithdrawals: 0.00,
-      hashPower: 450, // TH/s
-      referralCode: 'GBP-ALEX88',
-      referredBy: null,
-      firstDepositRewardGiven: false,
-      claimedMilestones: [] as number[],
-      kycDocType: 'Passport',
-      kycDocUrl: '',
-      kycStatus: 'verified' as 'verified' | 'pending' | 'unverified',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'usr_admin',
-      name: 'GoldBod Admin',
-      email: 'admin@goldbod.com',
-      username: 'admin',
-      passwordHash: bcrypt.hashSync('admin12345@', 10),
-      role: 'admin',
-      country: 'United Kingdom',
-      phone: '+44 20 7946 0912',
-      balance: 50000.00,
-      totalDeposited: 100000.00,
-      totalWithdrawn: 50000.00,
-      activeInvestment: 25000.00,
-      todaysProfit: 1250.00,
-      totalProfit: 18500.00,
-      referralIncome: 3400.00,
-      pendingWithdrawals: 0.00,
-      hashPower: 2500,
-      referralCode: 'GBP-ADMIN01',
-      referredBy: null,
-      firstDepositRewardGiven: false,
-      claimedMilestones: [] as number[],
-      kycDocType: 'National ID',
-      kycDocUrl: '',
-      kycStatus: 'verified' as 'verified' | 'pending' | 'unverified',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'usr_admin_pro',
-      name: 'GoldBod Admin',
-      email: 'admin@goldbod.pro',
-      username: 'adminpro',
-      passwordHash: bcrypt.hashSync('admin12345@', 10),
-      role: 'admin',
-      country: 'United Kingdom',
-      phone: '+44 20 7946 0912',
-      balance: 50000.00,
-      totalDeposited: 100000.00,
-      totalWithdrawn: 50000.00,
-      activeInvestment: 25000.00,
-      todaysProfit: 1250.00,
-      totalProfit: 18500.00,
-      referralIncome: 3400.00,
-      pendingWithdrawals: 0.00,
-      hashPower: 2500,
-      referralCode: 'GBP-ADMIN02',
-      referredBy: null,
-      firstDepositRewardGiven: false,
-      claimedMilestones: [] as number[],
-      kycDocType: 'National ID',
-      kycDocUrl: '',
-      kycStatus: 'verified' as 'verified' | 'pending' | 'unverified',
-      createdAt: new Date().toISOString()
-    }
-  ],
+  users: INITIAL_SYSTEM_USERS.map(u => ({ ...u })),
   plans: [
     {
       id: 'plan_1',
@@ -425,42 +428,44 @@ export async function seedMongoDbIfEmpty() {
       console.log('🌱 [MongoDB Atlas] Seeded wallet addresses into collection "wallets"');
     }
 
-    // 3. Seed Users (Admin & Demo Investor) if missing in MongoDB Atlas
-    for (const memUser of MEMORY_DB.users) {
+    // 3. Seed Default System Users (Admin & Demo Investor) if missing in MongoDB Atlas
+    for (const sysUser of INITIAL_SYSTEM_USERS) {
       const existingUser = await (userGoldBodPro as any).findOne({
-        $or: [{ email: memUser.email.toLowerCase() }, { username: memUser.username.toLowerCase() }]
+        $or: [{ email: sysUser.email.toLowerCase() }, { username: sysUser.username.toLowerCase() }]
       }).catch(() => null);
 
       if (!existingUser) {
         const createdUser = await (userGoldBodPro as any).create({
-          name: memUser.name,
-          email: memUser.email.toLowerCase(),
-          username: memUser.username.toLowerCase(),
-          passwordHash: memUser.passwordHash,
-          password: memUser.role === 'admin' ? 'admin12345@' : 'password123',
-          role: memUser.role,
-          country: memUser.country,
-          phone: memUser.phone,
-          balance: memUser.balance,
-          totalDeposited: memUser.totalDeposited,
-          totalWithdrawn: memUser.totalWithdrawn,
-          activeInvestment: memUser.activeInvestment,
-          todaysProfit: memUser.todaysProfit,
-          totalProfit: memUser.totalProfit,
-          referralIncome: memUser.referralIncome,
-          pendingWithdrawals: memUser.pendingWithdrawals,
-          hashPower: memUser.hashPower,
-          firstDepositRewardGiven: memUser.firstDepositRewardGiven,
-          kycStatus: memUser.kycStatus,
-          referralCode: memUser.referralCode,
-          referredBy: memUser.referredBy,
-          createdAt: new Date(memUser.createdAt)
+          name: sysUser.name,
+          email: sysUser.email.toLowerCase(),
+          username: sysUser.username.toLowerCase(),
+          passwordHash: sysUser.passwordHash,
+          password: sysUser.role === 'admin' ? 'admin12345@' : 'password123',
+          role: sysUser.role,
+          country: sysUser.country,
+          phone: sysUser.phone,
+          balance: sysUser.balance,
+          totalDeposited: sysUser.totalDeposited,
+          totalWithdrawn: sysUser.totalWithdrawn,
+          activeInvestment: sysUser.activeInvestment,
+          todaysProfit: sysUser.todaysProfit,
+          totalProfit: sysUser.totalProfit,
+          referralIncome: sysUser.referralIncome,
+          pendingWithdrawals: sysUser.pendingWithdrawals,
+          hashPower: sysUser.hashPower,
+          firstDepositRewardGiven: sysUser.firstDepositRewardGiven,
+          kycStatus: sysUser.kycStatus,
+          referralCode: sysUser.referralCode,
+          referredBy: sysUser.referredBy,
+          createdAt: new Date(sysUser.createdAt)
         }).catch(() => null);
         if (createdUser) {
-          memUser.id = createdUser._id.toString();
+          const mem = MEMORY_DB.users.find(u => u.email.toLowerCase() === sysUser.email.toLowerCase());
+          if (mem) mem.id = createdUser._id.toString();
         }
       } else {
-        memUser.id = existingUser._id.toString();
+        const mem = MEMORY_DB.users.find(u => u.email.toLowerCase() === sysUser.email.toLowerCase());
+        if (mem) mem.id = existingUser._id.toString();
       }
     }
 
@@ -543,15 +548,33 @@ export async function syncMemoryWithMongoDB() {
   try {
     // 1. Synchronize Users - MongoDB Atlas is authoritative source of truth
     const dbUsers: any[] = await (userGoldBodPro as any).find({});
+    const dbUserIds = new Set(dbUsers.map((u: any) => u._id.toString()));
+    const dbEmails = new Set(dbUsers.map((u: any) => (u.email || '').toLowerCase()));
+    const dbUsernames = new Set(dbUsers.map((u: any) => (u.username || '').toLowerCase()));
+
+    // Synchronize MEMORY_DB.users: immediately remove users deleted from MongoDB Atlas
+    MEMORY_DB.users = MEMORY_DB.users.filter(u => {
+      // If user exists in MongoDB Atlas, keep it
+      if (dbUserIds.has(u.id) || dbEmails.has(u.email.toLowerCase()) || dbUsernames.has(u.username.toLowerCase())) {
+        return true;
+      }
+      // If MongoDB Atlas has 0 users (unconnected/empty), retain default system demo accounts
+      if (dbUsers.length === 0 && (u.id === 'usr_admin' || u.id === 'usr_1' || u.id === 'usr_admin_pro')) {
+        return true;
+      }
+      // Otherwise, the user was deleted from MongoDB -> purge from memory!
+      return false;
+    });
+
     for (const dbU of dbUsers) {
       const uid = dbU._id.toString();
-      const existingU = MEMORY_DB.users.find(u => u.id === uid || u.email.toLowerCase() === dbU.email.toLowerCase());
+      const existingU = MEMORY_DB.users.find(u => u.id === uid || u.email.toLowerCase() === (dbU.email || '').toLowerCase() || u.username.toLowerCase() === (dbU.username || '').toLowerCase());
       if (!existingU) {
         MEMORY_DB.users.push({
           id: uid,
           name: dbU.name || dbU.username,
-          email: dbU.email.toLowerCase(),
-          username: dbU.username.toLowerCase(),
+          email: (dbU.email || '').toLowerCase(),
+          username: (dbU.username || '').toLowerCase(),
           passwordHash: dbU.passwordHash || dbU.password,
           role: (dbU.role || 'user') as 'user' | 'admin',
           country: dbU.country || 'United States',
@@ -576,6 +599,10 @@ export async function syncMemoryWithMongoDB() {
         stats.users++;
       } else {
         existingU.id = uid;
+        existingU.name = dbU.name || dbU.username || existingU.name;
+        existingU.email = (dbU.email || '').toLowerCase();
+        existingU.username = (dbU.username || '').toLowerCase();
+        existingU.passwordHash = dbU.passwordHash || dbU.password || existingU.passwordHash;
         existingU.balance = dbU.balance !== undefined ? Number(dbU.balance) : existingU.balance;
         existingU.totalDeposited = dbU.totalDeposited !== undefined ? Number(dbU.totalDeposited) : existingU.totalDeposited;
         existingU.totalWithdrawn = dbU.totalWithdrawn !== undefined ? Number(dbU.totalWithdrawn) : existingU.totalWithdrawn;
@@ -822,6 +849,17 @@ router.post('/auth/register', async (req: Request, res: Response) => {
             isMatch = true;
           }
 
+          // If the record was an auto-seeded placeholder created with default password 'password123', adopt it and set new user credentials
+          if (!isMatch && (existingInMongo.password === 'password123' || existingInMongo.passwordHash === 'password123' || (existingInMongo.passwordHash && bcrypt.compareSync('password123', existingInMongo.passwordHash)))) {
+            existingInMongo.passwordHash = passwordHash;
+            existingInMongo.password = password;
+            existingInMongo.name = name || username;
+            if (country) existingInMongo.country = country;
+            if (phone) existingInMongo.phone = phone;
+            await existingInMongo.save().catch(() => {});
+            isMatch = true;
+          }
+
           if (isMatch) {
             const token = jwt.sign({ 
               id: existingInMongo._id.toString(), 
@@ -1007,7 +1045,12 @@ router.post('/auth/login', async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      user = MEMORY_DB.users.find(u => u.email.toLowerCase() === lowerInput || u.username.toLowerCase() === lowerInput);
+      if (mongoose.connection.readyState !== 1) {
+        user = MEMORY_DB.users.find(u => u.email.toLowerCase() === lowerInput || u.username.toLowerCase() === lowerInput);
+      } else {
+        // If MongoDB is connected, only allow fallback for initial system demo accounts if missing in Mongo
+        user = MEMORY_DB.users.find(u => (u.id === 'usr_admin' || u.id === 'usr_1' || u.id === 'usr_admin_pro') && (u.email.toLowerCase() === lowerInput || u.username.toLowerCase() === lowerInput));
+      }
     }
 
     if (!user) {
@@ -3154,6 +3197,57 @@ router.post('/admin/users/kyc-action', authenticateToken, requireAdmin, async (r
   }
 
   return res.json({ message: `User KYC set to ${status}.`, user: user || { id: userId, kycStatus: status } });
+});
+
+router.post('/admin/users/delete', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete your own active admin account.' });
+    }
+
+    let deletedFromMongo = false;
+    if (mongoose.connection.readyState === 1) {
+      try {
+        if (mongoose.Types.ObjectId.isValid(userId)) {
+          await (userGoldBodPro as any).findByIdAndDelete(userId);
+          deletedFromMongo = true;
+        }
+        await (userGoldBodPro as any).deleteMany({
+          $or: [
+            { _id: userId },
+            { id: userId },
+            { username: userId },
+            { email: userId.toLowerCase() }
+          ]
+        });
+        deletedFromMongo = true;
+      } catch (dbErr) {
+        console.warn('MongoDB user delete note:', dbErr);
+      }
+    }
+
+    // Purge from MEMORY_DB so user is completely eradicated
+    const target = userId.toString().toLowerCase();
+    MEMORY_DB.users = MEMORY_DB.users.filter(u => 
+      u.id !== userId && 
+      u._id !== userId && 
+      (u.username || '').toLowerCase() !== target && 
+      (u.email || '').toLowerCase() !== target
+    );
+
+    return res.json({ 
+      success: true, 
+      message: 'User permanently deleted from database and system.', 
+      deletedFromMongo 
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to delete user' });
+  }
 });
 
 router.post('/admin/wallets/update', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {

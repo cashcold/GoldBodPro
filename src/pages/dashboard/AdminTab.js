@@ -175,6 +175,24 @@ class AdminTab extends Component {
     }
   };
 
+  handleDeleteUser = async (userId, userLabel) => {
+    if (!window.confirm(`Are you sure you want to permanently delete user "${userLabel}"? This removes them from both MongoDB and system memory.`)) {
+      return;
+    }
+    try {
+      this.setState({ actionLoading: `delete-${userId}` });
+      const res = await api.post('/admin/users/delete', { userId });
+      this.setState({ msg: res.data?.message || 'User deleted successfully' });
+      await this.fetchAdminData();
+      await this.fetchDbStatus();
+      if (this.props.refresh) this.props.refresh();
+    } catch (err) {
+      this.setState({ msg: 'Failed to delete user: ' + (err.response?.data?.error || err.message) });
+    } finally {
+      this.setState({ actionLoading: null });
+    }
+  };
+
   handleUpdateWallet = async (e) => {
     e.preventDefault();
     const { walletCurrency, walletAddress } = this.state;
@@ -776,6 +794,7 @@ class AdminTab extends Component {
                       <th className="py-3 px-2">Balance</th>
                       <th className="py-3 px-2">Pending Withdraw</th>
                       <th className="py-3 px-2">KYC Status</th>
+                      <th className="py-3 px-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -800,6 +819,18 @@ class AdminTab extends Component {
                           }`}>
                             {u.kycStatus || 'pending'}
                           </span>
+                        </td>
+                        <td className="py-3 px-2 text-right">
+                          {u.role !== 'admin' && (
+                            <button
+                              type="button"
+                              onClick={() => this.handleDeleteUser(u.id, `${u.name || u.username} (${u.email})`)}
+                              disabled={this.state.actionLoading === `delete-${u.id}`}
+                              className="px-2.5 py-1 text-[11px] font-bold rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                            >
+                              {this.state.actionLoading === `delete-${u.id}` ? 'Deleting...' : 'Delete'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
