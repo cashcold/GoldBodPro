@@ -3226,19 +3226,20 @@ router.post('/admin/users/delete', authenticateToken, requireAdmin, async (req: 
     let deletedFromMongo = false;
     if (mongoose.connection.readyState === 1) {
       try {
-        if (mongoose.Types.ObjectId.isValid(userId)) {
-          await (userGoldBodPro as any).findByIdAndDelete(userId);
-          deletedFromMongo = true;
-        }
-        await (userGoldBodPro as any).deleteMany({
+        const deleteQuery: any = {
           $or: [
-            { _id: userId },
             { id: userId },
-            { username: userId },
-            { email: userId.toLowerCase() }
+            { username: { $regex: `^${escapeRegex(userId)}$`, $options: 'i' } },
+            { email: { $regex: `^${escapeRegex(userId)}$`, $options: 'i' } }
           ]
-        });
-        deletedFromMongo = true;
+        };
+
+        if (mongoose.Types.ObjectId.isValid(userId)) {
+          deleteQuery.$or.unshift({ _id: userId });
+        }
+
+        const deleteResult = await (userGoldBodPro as any).deleteMany(deleteQuery);
+        deletedFromMongo = deleteResult.deletedCount > 0;
       } catch (dbErr) {
         console.warn('MongoDB user delete note:', dbErr);
       }
@@ -3253,9 +3254,11 @@ router.post('/admin/users/delete', authenticateToken, requireAdmin, async (req: 
       (u.email || '').toLowerCase() !== target
     );
 
-    return res.json({ 
+    return res.json({
       success: true, 
-      message: 'User permanently deleted from database and system.', 
+      message: deletedFromMongo
+        ? 'User permanently deleted from database and system.'
+        : 'User removed from system memory, but no matching MongoDB record was found.',
       deletedFromMongo 
     });
   } catch (err: any) {
