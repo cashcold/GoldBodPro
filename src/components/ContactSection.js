@@ -67,7 +67,9 @@ class ContactSection extends Component {
                   </div>
                   <div>
                     <h4 className="text-xs text-gray-400 uppercase font-semibold">Hotline</h4>
-                    <p className="text-sm font-bold text-white font-mono">+1 (800) 555-GOLDBOD</p>
+                    <a href="tel:+18005545424" className="text-sm font-bold text-white font-mono hover:text-[#FFD700] transition-colors block">
+                      +1 (800) 554-5424
+                    </a>
                   </div>
                 </div>
 
