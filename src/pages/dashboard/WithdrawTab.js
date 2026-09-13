@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import api from '../../services/api.js';
-import { ArrowUpCircle, ShieldCheck, AlertCircle, Clock, CheckCircle2, Zap, Wallet } from 'lucide-react';
+import { ArrowUpCircle, ShieldCheck, AlertCircle, Clock, CheckCircle2, Zap, Wallet, Lock } from 'lucide-react';
 
 class WithdrawTab extends Component {
   constructor(props) {
@@ -30,6 +30,15 @@ class WithdrawTab extends Component {
     const { amount, gateway, walletAddress } = this.state;
     const { refresh, data } = this.props;
     const userBal = data?.user?.balance || 0;
+    const deposits = data?.deposits || [];
+    const hasApprovedDeposit = data?.user?.role === 'admin' || Number(data?.user?.totalDeposited || 0) > 0 || deposits.some(d => d.status === 'approved' || d.status === 'Approved');
+
+    if (!hasApprovedDeposit) {
+      this.setState({
+        errorMsg: 'First Deposit Required: You must complete your first deposit before you can withdraw your $5.00 welcome bonus or account balance.'
+      });
+      return;
+    }
 
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0) {
@@ -81,10 +90,12 @@ class WithdrawTab extends Component {
   render() {
     const { data } = this.props;
     const { gateway, walletAddress, amount, submitting, successMsg, errorMsg } = this.state;
-    const { user, withdrawals } = data;
+    const { user, withdrawals, deposits } = data;
 
-    const availableBalance = Number(user.balance || 0);
+    const availableBalance = Number(user?.balance || 0);
     const netPayout = Math.max(0, Number(amount || 0));
+    const hasApprovedDeposit = user?.role === 'admin' || Number(user?.totalDeposited || 0) > 0 || (deposits && deposits.some(d => d.status === 'approved' || d.status === 'Approved'));
+    const hasPendingDeposit = !hasApprovedDeposit && deposits && deposits.some(d => d.status === 'pending' || d.status === 'Pending');
 
     return (
       <div className="space-y-8 animate-in fade-in max-w-4xl mx-auto">
@@ -106,19 +117,72 @@ class WithdrawTab extends Component {
                 ${availableBalance.toFixed(2)} USDT
               </p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold w-fit">
-              <Zap className="w-4 h-4 text-emerald-400 animate-pulse" />
-              <span>Instant Payouts Enabled</span>
-            </div>
+            {hasApprovedDeposit ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold w-fit">
+                <Zap className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>Instant Payouts Enabled</span>
+              </div>
+            ) : hasPendingDeposit ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold w-fit">
+                <Clock className="w-4 h-4 text-amber-400 animate-spin" />
+                <span>Deposit Awaiting Verification</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold w-fit">
+                <Lock className="w-4 h-4 text-amber-400" />
+                <span>First Deposit Required</span>
+              </div>
+            )}
           </div>
 
-          {availableBalance >= 5 ? (
+          {!hasApprovedDeposit ? (
+            hasPendingDeposit ? (
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Clock className="w-5 h-5 text-amber-400 animate-spin" />
+                  </div>
+                  <div>
+                    <p className="font-black text-amber-200 uppercase tracking-wider text-sm">
+                      First Deposit Awaiting Approval
+                    </p>
+                    <p className="mt-1 text-gray-300 leading-relaxed">
+                      Your first deposit is currently being verified on the blockchain. As soon as the transaction is approved, your <span className="text-[#FFD700] font-bold font-mono">$5.00 Welcome Bonus</span> and wallet cashouts will unlock immediately!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Lock className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-black text-amber-200 uppercase tracking-wider text-sm">
+                      First Deposit Required to Withdraw Welcome Bonus
+                    </p>
+                    <p className="mt-1 text-gray-300 leading-relaxed">
+                      Your <span className="text-[#FFD700] font-bold font-mono">$5.00 Welcome Bonus</span> is securely credited to your balance. To prevent bonus fraud and activate automated wallet payouts, you must make your first deposit before you can withdraw your welcome bonus or balance.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => this.props.setTab ? this.props.setTab('deposit') : null}
+                  className="btn-gold shrink-0 !py-2.5 !px-5 text-xs font-bold whitespace-nowrap shadow-lg shadow-amber-500/20 cursor-pointer"
+                >
+                  Make First Deposit
+                </button>
+              </div>
+            )
+          ) : availableBalance >= 5 ? (
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-emerald-200 uppercase">Direct Payout Active — No Deposit Required</p>
+                <p className="font-bold text-emerald-200 uppercase">Cashouts Unlocked — First Deposit Verified</p>
                 <p className="mt-1 text-gray-300">
-                  Your funds, welcome bonus, mining earnings, and investment profits (${availableBalance.toFixed(2)} USDT) are 100% unlocked for instant cashout with zero platform fees.
+                  Your welcome bonus, mining earnings, and investment profits (${availableBalance.toFixed(2)} USDT) are 100% unlocked for instant cashout with zero platform fees.
                 </p>
               </div>
             </div>
@@ -232,14 +296,36 @@ class WithdrawTab extends Component {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting || availableBalance < 5}
-              className="btn-gold w-full py-4 text-xs font-black uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <ArrowUpCircle className="w-5 h-5" />
-              {submitting ? 'Processing Payout Request...' : `Cash Out $${Number(amount || 0).toFixed(2)} USDT Now`}
-            </button>
+            {!hasApprovedDeposit ? (
+              hasPendingDeposit ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-4 text-xs font-black uppercase tracking-wider bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Clock className="w-5 h-5 animate-spin text-amber-400" />
+                  First Deposit Verification in Progress — Cashouts Locked
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => this.props.setTab ? this.props.setTab('deposit') : null}
+                  className="btn-gold w-full py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 cursor-pointer"
+                >
+                  <Lock className="w-5 h-5" />
+                  Make First Deposit to Unlock Welcome Bonus ($5.00)
+                </button>
+              )
+            ) : (
+              <button
+                type="submit"
+                disabled={submitting || availableBalance < 5}
+                className="btn-gold w-full py-4 text-xs font-black uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <ArrowUpCircle className="w-5 h-5" />
+                {submitting ? 'Processing Payout Request...' : `Cash Out $${Number(amount || 0).toFixed(2)} USDT Now`}
+              </button>
+            )}
           </form>
 
         </div>

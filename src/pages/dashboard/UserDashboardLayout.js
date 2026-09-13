@@ -99,7 +99,7 @@ class UserDashboardLayout extends Component {
       case 'deposit':
         return <DepositTab data={dashboardData} refresh={this.fetchDashboardData} />;
       case 'withdraw':
-        return <WithdrawTab data={dashboardData} refresh={this.fetchDashboardData} />;
+        return <WithdrawTab data={dashboardData} refresh={this.fetchDashboardData} setTab={this.setTab} />;
       case 'investments':
         return <InvestmentsTab data={dashboardData} refresh={this.fetchDashboardData} setTab={this.setTab} />;
       case 'mining':

@@ -2038,12 +2038,14 @@ router.post('/user/withdraw', authenticateToken, async (req: AuthRequest, res: R
     } catch (e) {}
   }
 
-  // Refresh latest balance directly from MongoDB if connected
+  // Refresh latest balance and totalDeposited directly from MongoDB if connected
   if (user && mongoose.connection.readyState === 1) {
     try {
       const dbDoc: any = await (userGoldBodPro as any).findById(user.id);
-      if (dbDoc && dbDoc.balance !== undefined) {
-        user.balance = Number(dbDoc.balance);
+      if (dbDoc) {
+        if (dbDoc.balance !== undefined) user.balance = Number(dbDoc.balance);
+        if (dbDoc.totalDeposited !== undefined) user.totalDeposited = Number(dbDoc.totalDeposited);
+        if (dbDoc.role) user.role = dbDoc.role;
       }
     } catch (e) {}
   }
@@ -2066,6 +2068,45 @@ router.post('/user/withdraw', authenticateToken, async (req: AuthRequest, res: R
 
   if (!walletAddress || !walletAddress.trim()) {
     return res.status(400).json({ error: 'Destination crypto wallet address is required.' });
+  }
+
+  // Enforce First Deposit requirement: Users must make their first deposit before they can withdraw the welcome bonus
+  if (user.role !== 'admin') {
+    let hasApprovedDeposit = Number(user.totalDeposited || 0) > 0;
+
+    if (!hasApprovedDeposit && mongoose.connection.readyState === 1) {
+      try {
+        const userQuery = mongoose.Types.ObjectId.isValid(user.id)
+          ? { $or: [{ userId: user.id }, { userId: new mongoose.Types.ObjectId(user.id) }] }
+          : { userId: user.id };
+        const approvedCount = await (depositGoldBodPro as any).countDocuments({
+          ...userQuery,
+          status: { $in: ['approved', 'Approved', 'completed', 'Completed'] }
+        });
+        if (approvedCount > 0) {
+          hasApprovedDeposit = true;
+          user.totalDeposited = Math.max(user.totalDeposited || 0, 1);
+        }
+      } catch (e) {}
+    }
+
+    if (!hasApprovedDeposit) {
+      const inMemoryApproved = MEMORY_DB.deposits.some(
+        d => (d.userId === user.id || d.userId === (user as any)._id) && 
+             (d.status === 'approved' || d.status === 'Approved')
+      );
+      if (inMemoryApproved) {
+        hasApprovedDeposit = true;
+        user.totalDeposited = Math.max(user.totalDeposited || 0, 1);
+      }
+    }
+
+    if (!hasApprovedDeposit) {
+      return res.status(403).json({ 
+        error: 'First Deposit Required: You must make your first deposit before you can withdraw your $5.00 welcome bonus. Please make an initial deposit to activate your wallet cashouts.',
+        code: 'FIRST_DEPOSIT_REQUIRED'
+      });
+    }
   }
 
   // Deduct user balance and place in pendingWithdrawals
